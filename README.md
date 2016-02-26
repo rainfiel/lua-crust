@@ -11,3 +11,5 @@ This project consists of two parts:
 This project works for ejoy2dx(https://github.com/rainfiel/ejoy2dx), but it's easy to use it stand-alone, you can integrate the server to your lua vm. To do this, you may need:
 * lsocket(https://github.com/rainfiel/lsocket)
 * lua-crypt(https://github.com/cloudwu/lua-crypt)
+
+You can find an example in ejoy2dx/project/example

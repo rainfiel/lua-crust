@@ -71,7 +71,7 @@ end
 
 function conn_mt:send(type, msg)
 	local txt = json:encode({type=type,msg=msg})
-	print(self.conn:send(txt))
+	self.conn:send(txt)
 end
 
 function conn_mt:result(ok, ...)
