@@ -11,6 +11,9 @@ import os
 import pprint
 import re
 import sys
+import json
+import socket
+import struct
 
 from wx.py import dispatcher
 import lua_edit as editwindow
@@ -19,6 +22,23 @@ from wx.py import frame
 from shell import Shell
 from wx.py.version import VERSION
 
+MCAST_GRP = '224.0.0.224'
+MCAST_PORT = 2606
+def create_discover():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+
+    try:
+        sock.bind(('', MCAST_PORT))
+    except Exception, e:
+        sock.bind((MCAST_GRP, MCAST_PORT))
+
+    mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    sock.setblocking(0)
+    return sock
 
 class Crust(wx.SplitterWindow):
     """Crust based on SplitterWindow."""
@@ -43,6 +63,10 @@ class Crust(wx.SplitterWindow):
         # navigation key, but the Shell window uses it to insert lines.
         style = self.GetWindowStyle()
         self.SetWindowStyle(style & ~wx.TAB_TRAVERSAL)
+
+        self.autoDiscover = False
+        self.discover = None
+        self.discover_timer = None
         
         self.shell = Shell(parent=self, introText=intro,
                            locals=locals, InterpClass=InterpClass,
@@ -64,7 +88,7 @@ class Crust(wx.SplitterWindow):
         self.notebook.AddPage(page=self.filling, text='Namespace', select=True)
         
         self.display = Display(parent=self.notebook)
-        self.notebook.AddPage(page=self.display, text='Log')
+        self.notebook.AddPage(page=self.display, text='Prompt')
         # Add 'pp' (pretty print) to the interpreter's locals.
         self.shell.interp.locals['pp'] = self.display.setItem
         self.display.nbTab = self.notebook.GetPageCount()-1
@@ -87,6 +111,54 @@ class Crust(wx.SplitterWindow):
         self.Bind(wx.EVT_SIZE, self.SplitterOnSize)
         self.Bind(wx.EVT_SPLITTER_SASH_POS_CHANGED, self.OnChanged)
         self.Bind(wx.EVT_SPLITTER_DCLICK, self.OnSashDClick)
+        self.Bind(wx.EVT_TIMER, self.OnTimer)
+
+        dispatcher.connect(receiver=self.connect_change, signal='Interpreter.connection')
+
+    def connect_change(self, status):
+        if status == "on":
+            self.stopAutoDiscover()
+        elif status == "off":
+            if self.autoDiscover:
+                self.beginAutoDiscover()
+
+    def setAutoDiscover(self, on):
+        self.autoDiscover = on
+        if self.autoDiscover:
+            self.display.setItem("Auto Discover:ON")
+            if not self.shell.interp.connected():
+                self.beginAutoDiscover()
+        else:
+            self.display.setItem("Auto Discover:OFF")
+            self.stopAutoDiscover()
+        self.display.Active()
+
+    def beginAutoDiscover(self):
+        if self.discover: return
+        self.discover = create_discover()
+        self.discover_timer = wx.Timer(self)
+        self.discover_timer.Start(1000/30.0)
+
+    def stopAutoDiscover(self):
+        if not self.discover: return
+        self.discover.close()
+        self.discover = None
+        self.discover_timer.Stop()
+        self.discover_timer = None
+
+    def OnTimer(self, evt):
+        if not self.discover: return
+        try:
+            msg, addr = self.discover.recvfrom(64)
+            data = json.loads(msg)
+        except Exception, e:
+            return
+
+        exp = "connect('%s', %s)" % (data['ip'], data['port'])
+        self.shell.alignDownPos()
+        self.shell.interp.addsource(exp)
+        self.shell.processLine()
+        self.stopAutoDiscover()
 
     def _CheckShouldSplit(self):
         if self._shouldsplit:
@@ -187,6 +259,12 @@ class Display(editwindow.EditWindow):
         #     focus = wx.Window.FindFocus()
         #     self.GetParent().SetSelection(self.nbTab)
         #     wx.CallAfter(focus.SetFocus)
+
+    def Active(self):
+        if self.GetParent().GetSelection() != self.nbTab:
+            focus = wx.Window.FindFocus()
+            self.GetParent().SetSelection(self.nbTab)
+            wx.CallAfter(focus.SetFocus)
             
 
 HELP_TEXT = """\
@@ -220,7 +298,8 @@ Ctrl+H            "hide" lines containing selection / "unhide"
 F12               on/off "free-edit" mode
 
 F4                Load lua file
-F5                refresh env
+F5                Refresh env
+F5                Toggle auto discover status
 """
 
 # TODO: Switch this to a editwindow.EditWindow

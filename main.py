@@ -52,7 +52,11 @@ class RunDemoApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         item = menu.Append(-1, "&Refresh env\tF5", "Refresh the env data of the current connection")
         self.Bind(wx.EVT_MENU, self.OnRefreshEnv, item)
 
-        item = menu.Append(-1, "&Widget Inspector\tF6", "Show the wxPython Widget Inspection Tool")
+        item = menu.Append(-1, "&Auto Discover\tF6", "Auto discover server during server launch", wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnDiscover, item)
+
+        menu.AppendSeparator()
+        item = menu.Append(-1, "&Widget Inspector\tF7", "Show the wxPython Widget Inspection Tool")
         self.Bind(wx.EVT_MENU, self.OnWidgetInspector, item)
 
         item = menu.Append(wx.ID_EXIT, "E&xit\tCtrl-Q", "Exit inspect")
@@ -157,6 +161,9 @@ class RunDemoApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
                                )
             dlg.ShowModal()
             dlg.Destroy()
+
+    def OnDiscover(self, evt):
+        self.win.setAutoDiscover(evt.IsChecked())
 
     def OnCloseFrame(self, evt):
         if hasattr(self, "window") and hasattr(self.window, "ShutdownDemo"):

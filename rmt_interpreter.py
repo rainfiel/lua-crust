@@ -59,6 +59,9 @@ class Interpreter(InteractiveInterpreter):
     def log(self, txt):
         self.locals['pp'](txt)
 
+    def connected(self):
+        return self.socket != None
+
     def connect(self, ip, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(3)
@@ -68,10 +71,13 @@ class Interpreter(InteractiveInterpreter):
         self.push("help()")
         self.push("env()")
 
+        dispatcher.send(signal='Interpreter.connection', sender=self, status="on")
+
     def disconnect(self):
         self.socket.close()
         self.socket = None
         print("--> disconnected")
+        dispatcher.send(signal='Interpreter.connection', sender=self, status="off")
 
     def push(self, command, astMod=None):
         """Send command to the interpreter to be executed.
