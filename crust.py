@@ -64,13 +64,13 @@ class Crust(wx.SplitterWindow):
         self.notebook.AddPage(page=self.filling, text='Namespace', select=True)
         
         self.display = Display(parent=self.notebook)
-        self.notebook.AddPage(page=self.display, text='Display')
+        self.notebook.AddPage(page=self.display, text='Log')
         # Add 'pp' (pretty print) to the interpreter's locals.
         self.shell.interp.locals['pp'] = self.display.setItem
         self.display.nbTab = self.notebook.GetPageCount()-1
         
-        self.calltip = Calltip(parent=self.notebook)
-        self.notebook.AddPage(page=self.calltip, text='Calltip')
+        self.helptip = Helptip(parent=self.notebook)
+        self.notebook.AddPage(page=self.helptip, text='Help')
         
         self.sessionlisting = SessionListing(parent=self.notebook)
         self.notebook.AddPage(page=self.sessionlisting, text='History')
@@ -189,28 +189,57 @@ class Display(editwindow.EditWindow):
         #     wx.CallAfter(focus.SetFocus)
             
 
+HELP_TEXT = """\
+* Key bindings:
+Home              Go to the beginning of the command or line.
+Shift+Home        Select to the beginning of the command or line.
+Shift+End         Select to the end of the line.
+End               Go to the end of the line.
+Ctrl+C            Copy selected text, removing prompts.
+Ctrl+Shift+C      Copy selected text, retaining prompts.
+Alt+C             Copy to the clipboard, including prefixed prompts.
+Ctrl+X            Cut selected text.
+Ctrl+V            Paste from clipboard.
+Ctrl+Shift+V      Paste and run multiple commands from clipboard.
+Ctrl+Up Arrow     Retrieve Previous History item.
+Alt+P             Retrieve Previous History item.
+Ctrl+Down Arrow   Retrieve Next History item.
+Alt+N             Retrieve Next History item.
+Shift+Up Arrow    Insert Previous History item.
+Shift+Down Arrow  Insert Next History item.
+F8                Command-completion of History item.
+                  (Type a few characters of a previous command and press F8.)
+Ctrl+Enter        Insert new line into multiline command.
+Ctrl+]            Increase font size.
+Ctrl+[            Decrease font size.
+Ctrl+=            Default font size.
+Ctrl-Space        Show Auto Completion.
+Ctrl-Alt-Space    Show Call Tip.
+Shift+Enter       Complete Text from History.
+Ctrl+H            "hide" lines containing selection / "unhide"
+F12               on/off "free-edit" mode
+
+F4                Load lua file
+F5                refresh env
+"""
+
 # TODO: Switch this to a editwindow.EditWindow
-class Calltip(wx.TextCtrl):
-    """Text control containing the most recent shell calltip."""
+class Helptip(wx.TextCtrl):
+    """Text control containing the most recent shell Helptip."""
 
     def __init__(self, parent=None, id=-1,ShellClassName='Shell'):
         style = (wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2)
         wx.TextCtrl.__init__(self, parent, id, style=style)
         self.SetBackgroundColour(wx.Colour(255, 255, 208))
         self.ShellClassName=ShellClassName
-        dispatcher.connect(receiver=self.display, signal=self.ShellClassName+'.calltip')
 
         df = self.GetFont()
         font = wx.Font(df.GetPointSize(), wx.TELETYPE, wx.NORMAL, wx.NORMAL)
         self.SetFont(font)
 
-    def display(self, calltip):
-        """Receiver for """+self.ShellClassName+""".calltip signal."""
-        ## self.SetValue(calltip)  # Caused refresh problem on Windows.
         self.Clear()
-        self.AppendText(calltip)
+        self.AppendText(HELP_TEXT)
         self.SetInsertionPoint(0)
-
 
 # TODO: Switch this to a editwindow.EditWindow
 class SessionListing(wx.TextCtrl):
@@ -278,7 +307,7 @@ class CrustFrame(frame.Frame, frame.ShellFrameMixin):
     revision = __revision__
 
 
-    def __init__(self, parent=None, id=-1, title='PyCrust',
+    def __init__(self, parent=None, id=-1, title='lua-crust',
                  pos=wx.DefaultPosition, size=wx.DefaultSize,
                  style=wx.DEFAULT_FRAME_STYLE,
                  rootObject=None, rootLabel=None, rootIsNamespace=True,
@@ -287,13 +316,13 @@ class CrustFrame(frame.Frame, frame.ShellFrameMixin):
                  *args, **kwds):
         """Create CrustFrame instance."""
         frame.Frame.__init__(self, parent, id, title, pos, size, style,
-                             shellName='PyCrust')
+                             shellName='lua-crust')
         frame.ShellFrameMixin.__init__(self, config, dataDir)
 
         if size == wx.DefaultSize:
             self.SetSize((800, 600))
         
-        intro = 'PyCrust %s - The Flakiest Python Shell' % VERSION
+        intro = 'lua-crust'
         
         self.SetStatusText(intro.replace('\n', ', '))
         self.crust = Crust(parent=self, intro=intro,
@@ -325,23 +354,7 @@ class CrustFrame(frame.Frame, frame.ShellFrameMixin):
 
 
     def OnAbout(self, event):
-        """Display an About window."""
-        title = 'About PyCrust'
-        text = 'PyCrust %s\n\n' % VERSION + \
-               'Yet another Python shell, only flakier.\n\n' + \
-               'Half-baked by Patrick K. O\'Brien,\n' + \
-               'the other half is still in the oven.\n\n' + \
-               'Shell Revision: %s\n' % self.shell.revision + \
-               'Interpreter Revision: %s\n\n' % self.shell.interp.revision + \
-               'Platform: %s\n' % sys.platform + \
-               'Python Version: %s\n' % sys.version.split()[0] + \
-               'wxPython Version: %s\n' % wx.VERSION_STRING + \
-               ('\t(%s)\n' % ", ".join(wx.PlatformInfo[1:]))
-        dialog = wx.MessageDialog(self, text, title,
-                                  wx.OK | wx.ICON_INFORMATION)
-        dialog.ShowModal()
-        dialog.Destroy()
-
+        pass
 
     def ToggleTools(self):
         """Toggle the display of the filling and other tools"""

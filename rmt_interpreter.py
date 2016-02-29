@@ -126,8 +126,8 @@ class Interpreter(InteractiveInterpreter):
         if ret == "":
             return False
 
+        self.log(ret)
         data = json.loads(ret)
-        self.log(data)
         if data['type'] == "result" or data['type'] == "error":
             msg = data.get('msg')
             if msg:

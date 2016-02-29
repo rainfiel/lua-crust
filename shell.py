@@ -82,22 +82,7 @@ class ShellFrame(frame.Frame, frame.ShellFrameMixin):
             self.Destroy()
 
     def OnAbout(self, event):
-        """Display an About window."""
-        title = 'About PyShell'
-        text = 'PyShell %s\n\n' % VERSION + \
-               'Yet another Python shell, only flakier.\n\n' + \
-               'Half-baked by Patrick K. O\'Brien,\n' + \
-               'the other half is still in the oven.\n\n' + \
-               'Shell Revision: %s\n' % self.shell.revision + \
-               'Interpreter Revision: %s\n\n' % self.shell.interp.revision + \
-               'Platform: %s\n' % sys.platform + \
-               'Python Version: %s\n' % sys.version.split()[0] + \
-               'wxPython Version: %s\n' % wx.VERSION_STRING + \
-               ('\t(%s)\n' % ", ".join(wx.PlatformInfo[1:])) 
-        dialog = wx.MessageDialog(self, text, title,
-                                  wx.OK | wx.ICON_INFORMATION)
-        dialog.ShowModal()
-        dialog.Destroy()
+        pass
 
 
     def OnHelp(self, event):
